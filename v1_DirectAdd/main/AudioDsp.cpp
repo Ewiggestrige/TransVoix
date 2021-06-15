@@ -16,8 +16,6 @@ fNumInputs(2),
 fNumOutputs(2),
 fRelativeRate(0.0),
 fRelativeSize(0),
-fWindowSize(0),
-fOlaSize(0),
 fHandle(nullptr),
 fRunning(false),
 TransVoixL(SR,BS),
@@ -83,16 +81,8 @@ void AudioDsp::setRelative(float RR, int RS){
   fRelativeRate = RR;
   fRelativeSize = RS;
   // setting up DSP objects
-  int myWindow, myOLA, mySize;
-  myWindow = int(fBufferSize * 2.5 - fRelativeSize * 2);
-  myOLA = 2*(fBufferSize - fRelativeSize);
-  mySize = RS;
-  fWindowSize = myWindow;
-  fOlaSize = myOLA;
-  TransVoixL.slice(myWindow,myOLA,2);
-  TransVoixL.setting(RR,mySize);
-  TransVoixR.slice(myWindow,myOLA,2);
-  TransVoixR.setting(RR,mySize);
+  TransVoixL.setting(RR,RS);
+  TransVoixR.setting(RR,RS);
 }
 
 void AudioDsp::audioTask()
@@ -110,76 +100,29 @@ void AudioDsp::audioTask()
     size_t bytes_read = 0;
     i2s_read((i2s_port_t)0, &samples_data_in, fNumInputs*sizeof(int16_t)*fBufferSize, &bytes_read, portMAX_DELAY);
 
-    // float* inSampleL = new float[fBufferSize];
-    // float* inSampleR = new float[fBufferSize];
-    // float* outSampleL = new float[fBufferSize];
-    // float* outSampleR = new float[fBufferSize];
-
     for(int i = 0; i < fBufferSize; i++){
       float inSampleLa = 0.0;
       float inSampleLd = 0.0;
       float inSampleRa = 0.0;
       float inSampleRd = 0.0;
 
-      // index = int(i*fRelativeRate);
-      // rest = i*fRelativeRate - index;
+      index = int(i*fRelativeRate);
+      rest = i*fRelativeRate - index;
 
-      // //Addition Direct
-      // if(index < fBufferSize){
-      //   // input buffer to float
-      //   inSampleLa = samples_data_in[index*fNumInputs]*DIV_S16;
-      //   inSampleLd = samples_data_in[(index+1)*fNumInputs]*DIV_S16;
-      //   inSampleRa = samples_data_in[index*fNumInputs+1]*DIV_S16;
-      //   inSampleRd = samples_data_in[(index+1)*fNumInputs+1]*DIV_S16;
-      //
-      //   // DSP
-      //   inSampleLa = TransVoixL.sample(inSampleLa,inSampleLd,rest);
-      //   inSampleRa = TransVoixR.sample(inSampleRa,inSampleRd,rest);
-      // }else{
-      //   inSampleLa = TransVoixL.tsm(i);
-      //   inSampleRa = TransVoixR.tsm(i);
-      // }
-
-      //OLA
-      if(i < fWindowSize - fOlaSize/2){
-        index = int(i*fRelativeRate);
-        rest = i*fRelativeRate - index;
-
+      //Addition Direct
+      if(index < fBufferSize){
         // input buffer to float
         inSampleLa = samples_data_in[index*fNumInputs]*DIV_S16;
         inSampleLd = samples_data_in[(index+1)*fNumInputs]*DIV_S16;
         inSampleRa = samples_data_in[index*fNumInputs+1]*DIV_S16;
         inSampleRd = samples_data_in[(index+1)*fNumInputs+1]*DIV_S16;
-
+      
         // DSP
         inSampleLa = TransVoixL.sample(inSampleLa,inSampleLd,rest);
         inSampleRa = TransVoixR.sample(inSampleRa,inSampleRd,rest);
-      }else if(i < fWindowSize){
-        index = int(i*fRelativeRate);
-        rest = i*fRelativeRate - index;
-
-        // input buffer to float
-        inSampleLa = samples_data_in[index*fNumInputs]*DIV_S16;
-        inSampleLd = samples_data_in[(index+1)*fNumInputs]*DIV_S16;
-        inSampleRa = samples_data_in[index*fNumInputs+1]*DIV_S16;
-        inSampleRd = samples_data_in[(index+1)*fNumInputs+1]*DIV_S16;
-
-        // DSP
-        inSampleLa = TransVoixL.ola(inSampleLa,inSampleLd,rest);
-        inSampleRa = TransVoixR.ola(inSampleRa,inSampleRd,rest);
       }else{
-        index = int((i - fOlaSize/2)*fRelativeRate);
-        rest = (i - fOlaSize/2)*fRelativeRate - index;
-
-        // input buffer to float
-        inSampleLa = samples_data_in[index*fNumInputs]*DIV_S16;
-        inSampleLd = samples_data_in[(index+1)*fNumInputs]*DIV_S16;
-        inSampleRa = samples_data_in[index*fNumInputs+1]*DIV_S16;
-        inSampleRd = samples_data_in[(index+1)*fNumInputs+1]*DIV_S16;
-
-        // DSP
-        inSampleLa = TransVoixL.sample(inSampleLa,inSampleLd,rest);
-        inSampleRa = TransVoixR.sample(inSampleRa,inSampleRd,rest);
+        inSampleLa = TransVoixL.tsm(i);
+        inSampleRa = TransVoixR.tsm(i);
       }
 
       // copying to output buffer
