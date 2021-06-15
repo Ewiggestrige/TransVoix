@@ -19,7 +19,7 @@ private:
 
   int fSampleRate, fBufferSize, fNumInputs, fNumOutputs;
   float fRelativeRate;
-  int fRelativeSize, fWindowSize, fOlaSize;
+  int fRelativeSize;
   TaskHandle_t fHandle;
   bool fRunning;
 
